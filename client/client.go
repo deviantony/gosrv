@@ -7,7 +7,7 @@ import "os"
 import "bytes"
 
 const (
-	server = "127.0.0.1:7777"
+	server = "localhost:7777"
 )
 
 func main() {

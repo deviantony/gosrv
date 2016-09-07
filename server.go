@@ -1,7 +1,6 @@
 package main // import "github.com/deviantony/gosrv"
 
 import (
-	"bytes"
 	"log"
 	"net"
 )
@@ -34,8 +33,14 @@ func main() {
 	}
 }
 
+func removeClient(conn net.Conn) {
+	log.Printf("Client %s disconnected", conn.RemoteAddr())
+	conn.Close()
+	//remove client from clients here
+}
+
 func handler(conn net.Conn) {
-	defer conn.Close()
+	defer removeClient(conn)
 	errorChan := make(chan error)
 	dataChan := make(chan []byte)
 
@@ -44,12 +49,13 @@ func handler(conn net.Conn) {
 	for {
 		select {
 		case data := <-dataChan:
+			log.Printf("Client %s sent: %s", conn.RemoteAddr(), string(data))
 			for i := range clients {
 				clients[i].Write(data)
 			}
 		case err := <-errorChan:
 			log.Println("An error occured:", err.Error())
-			break
+			return
 		}
 	}
 }
@@ -57,12 +63,11 @@ func handler(conn net.Conn) {
 func readWrapper(conn net.Conn, dataChan chan []byte, errorChan chan error) {
 	for {
 		buf := make([]byte, 1024)
-		_, err := conn.Read(buf)
+		reqLen, err := conn.Read(buf)
 		if err != nil {
 			errorChan <- err
 			return
 		}
-		n := bytes.Index(buf, []byte{0})
-		dataChan <- buf[:n]
+		dataChan <- buf[:reqLen]
 	}
 }
